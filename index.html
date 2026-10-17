@@ -1,0 +1,1636 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MODEL ARENA</title>
+<style>
+  :root{
+    --ink:#14171d; --paper:#f0eadb; --blue:#4176e6; --amber:#dd8629; --rule:#c9bfa6;
+    --serif:"Palatino Linotype","Book Antiqua",Palatino,Georgia,"Times New Roman",serif;
+    --text:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#07080d;display:flex;align-items:center;justify-content:center;min-height:100%;overflow:hidden;font-family:var(--text);color:var(--ink)}
+  #wrap{position:relative;width:min(96vw,1280px);aspect-ratio:16/9;background:#05060a;box-shadow:0 0 0 1px #000,0 40px 100px -20px #000}
+  canvas{display:block;width:100%;height:100%}
+
+  /* entry form */
+  #setup{position:absolute;inset:0;z-index:10;background:var(--paper);
+    background-image:radial-gradient(900px 420px at 50% 0%,#f7f2e6 0%,rgba(247,242,230,0) 70%),linear-gradient(180deg,#efe8d7,#e8e0cc);
+    display:flex;flex-direction:column;padding:1.6% 4% 1.2%;overflow:auto;transition:opacity .3s}
+  #setup.hidden{opacity:0;pointer-events:none}
+  .masthead{text-align:center;border-bottom:3px double var(--ink);padding-bottom:.4em}
+  .masthead h1{font-family:var(--serif);font-size:clamp(22px,3vw,40px);letter-spacing:.16em;text-transform:uppercase}
+  .masthead .tag{font-size:clamp(8px,1vw,11px);letter-spacing:.34em;text-transform:uppercase;color:var(--blue);margin-top:.4em;font-weight:600}
+  .masthead .flavor{margin-top:.35em;font-size:clamp(9px,1vw,10px);letter-spacing:.16em;text-transform:uppercase;color:#7a725f}
+  .board{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3%;padding:1.2% 0 .6%}
+  .card{border:2px solid var(--ink);background:linear-gradient(180deg,#f6f1e4,#ebe4d2);padding:2.6% 4%;display:flex;flex-direction:column;gap:.45em;position:relative}
+  .card::before{content:"";position:absolute;inset:6px;border:1px solid var(--rule);pointer-events:none}
+  .card h2{font-family:var(--serif);font-size:clamp(11px,1.25vw,14px);letter-spacing:.2em;text-transform:uppercase;text-align:center;padding-bottom:.4em;border-bottom:1px solid var(--rule)}
+  .card .num{position:absolute;top:-.7em;left:50%;transform:translateX(-50%);background:var(--paper);padding:0 .6em;font-size:10px;letter-spacing:.28em;color:#b98c3e}
+  label.f{display:block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#6f6857;margin-bottom:.2em}
+  select,input{width:100%;font-family:var(--text);font-size:clamp(10px,1vw,12.5px);padding:.45em .6em;border:1px solid #9c937d;background:#fbf7ec;color:var(--ink);border-radius:0;outline:none}
+  select:focus,input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(65,118,230,.18)}
+  .newfields{display:none;flex-direction:column;gap:.45em;border-top:1px dashed var(--rule);padding-top:.5em}
+  .newfields.on{display:flex}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:.5em}
+  .hint{font-size:9px;color:#8a8270;letter-spacing:.04em;line-height:1.35}
+  .footer{display:flex;flex-direction:column;align-items:center;gap:.45em;padding-top:.35em;border-top:3px double var(--ink)}
+  #begin{font-family:var(--serif);font-size:clamp(11px,1.3vw,15px);letter-spacing:.22em;text-transform:uppercase;font-weight:700;
+    padding:.65em 2.8em;background:var(--blue);color:#fff;border:none;cursor:pointer;box-shadow:0 3px 0 #2c5ab5;transition:transform .1s,box-shadow .1s}
+  #begin:hover{transform:translateY(-1px);box-shadow:0 4px 0 #2c5ab5}
+  #begin:active{transform:translateY(2px);box-shadow:0 1px 0 #2c5ab5}
+  #status{font-size:11px;letter-spacing:.08em;color:#7a725f;min-height:1.2em;text-align:center}
+  #status.err{color:#a8322a}
+  #status.ok{color:#2f6b3a}
+  .demo-note{font-size:9px;color:#8a8270;text-align:center;letter-spacing:.06em}
+
+  /* result sheet */
+  #result{position:absolute;inset:0;z-index:9;display:none;align-items:center;justify-content:center;background:rgba(6,8,14,.62)}
+  #result.show{display:flex}
+  .sheet{width:min(76%,800px);max-height:90%;overflow:auto;background:var(--paper);border:3px solid var(--ink);
+    box-shadow:0 0 0 6px var(--paper),0 0 0 7px var(--ink),0 30px 70px -20px #000;padding:1.8% 2.4%;position:relative}
+  .sheet::before{content:"";position:absolute;inset:8px;border:1px solid var(--rule);pointer-events:none}
+  .sheet h2{font-family:var(--serif);text-align:center;font-size:clamp(18px,2.3vw,28px);letter-spacing:.14em;text-transform:uppercase}
+  .sheet .reason{text-align:center;font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:#7a725f;margin-bottom:.6em}
+  .sheet table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:.6em}
+  .sheet th,.sheet td{padding:.24em .5em;text-align:right;border-bottom:1px solid var(--rule)}
+  .sheet th:first-child,.sheet td:first-child{text-align:left;color:#6f6857;letter-spacing:.1em;text-transform:uppercase;font-size:8.5px}
+  .sheet thead th{font-family:var(--serif);font-size:11px;letter-spacing:.1em;text-transform:uppercase;border-bottom:2px solid var(--ink);color:var(--ink)}
+  .sheet .btns{display:flex;gap:14px;justify-content:center;margin-top:.2em}
+  .sheet button{font-family:var(--serif);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;
+    padding:.6em 1.9em;cursor:pointer;border:none;transition:transform .1s,box-shadow .1s}
+  #rematch{background:var(--blue);color:#fff;box-shadow:0 3px 0 #2c5ab5}
+  #rematch:hover{transform:translateY(-1px);box-shadow:0 4px 0 #2c5ab5}
+  #newcontest{background:#fbf7ec;color:var(--ink);border:2px solid var(--ink);box-shadow:0 3px 0 var(--ink)}
+  #newcontest:hover{transform:translateY(-1px);box-shadow:0 4px 0 var(--ink)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="stage"></canvas>
+
+  <div id="setup">
+    <div class="masthead">
+      <h1>Model Arena</h1>
+      <div class="tag">A Grand Exhibition of Contesting Intelligences</div>
+      <div class="flavor">Three rounds &nbsp;Ãƒâ€šÃ‚Â·&nbsp; All comers accepted &nbsp;Ãƒâ€šÃ‚Â·&nbsp; No seconds, no referee</div>
+    </div>
+    <div class="board">
+      <div class="card" data-slot="0">
+        <span class="num">COMBATANT THE FIRST</span>
+        <h2>Blue Corner</h2>
+        <label class="f">Model</label>
+        <select class="source"></select>
+        <div class="newfields">
+          <div class="row2">
+            <div><label class="f">Provider</label><select class="provider"></select></div>
+            <div><label class="f">Temperature</label><input class="temp" type="number" min="0" max="2" step="0.1" value="0.9"></div>
+          </div>
+          <label class="f">Model name</label>
+          <input class="model" placeholder="e.g. gpt-4o-mini">
+          <label class="f">API key</label>
+          <input class="key" type="password" placeholder="kept on your machine only">
+          <div class="hint">The key goes to your local proxy, is held in memory, and is never written to disk.</div>
+        </div>
+        <div class="hint src-note"></div>
+      </div>
+      <div class="card" data-slot="1">
+        <span class="num">COMBATANT THE SECOND</span>
+        <h2>Amber Corner</h2>
+        <label class="f">Model</label>
+        <select class="source"></select>
+        <div class="newfields">
+          <div class="row2">
+            <div><label class="f">Provider</label><select class="provider"></select></div>
+            <div><label class="f">Temperature</label><input class="temp" type="number" min="0" max="2" step="0.1" value="0.9"></div>
+          </div>
+          <label class="f">Model name</label>
+          <input class="model" placeholder="e.g. claude-3-5-haiku-latest">
+          <label class="f">API key</label>
+          <input class="key" type="password" placeholder="kept on your machine only">
+          <div class="hint">The key goes to your local proxy, is held in memory, and is never written to disk.</div>
+        </div>
+        <div class="hint src-note"></div>
+      </div>
+    </div>
+    <div class="footer">
+      <button id="begin">Begin the Contest</button>
+      <div id="status"></div>
+      <div class="demo-note">Run <b>node proxy.js</b> to fight with real models, or choose the demonstration engine.</div>
+    </div>
+  </div>
+
+  <div id="result">
+    <div class="sheet">
+      <h2 id="res-title">Knocked Out</h2>
+      <div class="reason" id="res-reason"></div>
+      <table>
+        <thead><tr><th>Record</th><th id="res-name-a">A</th><th id="res-name-b">B</th></tr></thead>
+        <tbody id="res-body"></tbody>
+      </table>
+      <div class="btns">
+        <button id="newcontest">New Contest</button>
+        <button id="rematch">Rematch</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   MODEL ARENA
+   Two models fight in a 2.5D fighting game. The engine owns every
+   frame: articulated bodies, keyframed strikes, hitstop, juggles.
+   A model only ever chooses ONE thing per turn ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â which move to
+   attempt ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â and the engine animates and resolves it.
+
+   All fighters are original. Nothing here is copied from another
+   fighting game.
+   ============================================================ */
+
+const W = 1280, H = 720;
+const AX0 = 205, AX1 = W - 205;          // side dispatch columns
+const ACX = W / 2;
+const GROUND = 566;
+const TIME_LIMIT = 5 * 60 * 1000;
+
+const C = {
+  ink: "#14171d", paper: "#f0eadb", rule: "#c9bfa6",
+  blue: "#4176e6", amber: "#dd8629", gold: "#f0c05a",
+  red: "#c0392b", white: "#f7f4ec",
+};
+const SERIF = '"Palatino Linotype","Book Antiqua",Palatino,Georgia,"Times New Roman",serif';
+const TEXT  = 'Georgia,"Times New Roman",serif';
+
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+function sizeCanvas(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener("resize", sizeCanvas);
+
+/* ============================================================
+   COSTUMES
+   ============================================================ */
+const COSTUMES = [
+  { skin:"#e3ac7d", skinDk:"#b8804f", gi:"#3f63c9", giDk:"#24407f", trim:"#eef3ff", hair:"#241b14", belt:"#f0c05a" },
+  { skin:"#c98f63", skinDk:"#94603a", gi:"#c9601f", giDk:"#8a3d0f", trim:"#ffe9cc", hair:"#14100c", belt:"#f0c05a" },
+];
+
+/* ============================================================
+   MOVES
+   Every move is a keyframed animation plus a set of hit events.
+   `combo` is a scripted three-hit string: it continues only while
+   the previous hit connects, exactly like a real chain.
+   ============================================================ */
+const MOVES = {
+  jab: {
+    pose: "jab", startup: 70, active: 70, recovery: 150,
+    hits: [{ at: 70, dmg: 4, level: "high", hitstun: 210, knock: 8, stop: 45, range: 118 }],
+    meter: 5,
+  },
+  combo: {
+    pose: "combo", startup: 90, active: 520, recovery: 230, string: true,
+    hits: [
+      { at: 90,  dmg: 4,  level: "high", hitstun: 200, knock: 6,  stop: 45, range: 118, phase: 0 },
+      { at: 300, dmg: 7,  level: "high", hitstun: 250, knock: 10, stop: 55, range: 130, phase: 1 },
+      { at: 560, dmg: 15, level: "high", hitstun: 340, knock: 40, stop: 80, range: 145, phase: 2 },
+    ],
+    meter: 15,
+  },
+  low: {
+    pose: "low", startup: 120, active: 90, recovery: 230,
+    hits: [{ at: 120, dmg: 7, level: "low", hitstun: 240, knock: 12, stop: 55, range: 130 }],
+    meter: 7,
+  },
+  launcher: {
+    pose: "launcher", startup: 210, active: 120, recovery: 400,
+    hits: [{ at: 210, dmg: 11, level: "high", hitstun: 400, knock: 20, stop: 90, range: 135, launch: 640 }],
+    meter: 12,
+  },
+  throw: {
+    pose: "throw", startup: 110, active: 80, recovery: 380,
+    hits: [{ at: 110, dmg: 19, level: "throw", hitstun: 420, knock: 70, stop: 100, range: 132 }],
+    meter: 10,
+  },
+  special: {
+    pose: "special", startup: 300, active: 160, recovery: 480,
+    hits: [{ at: 300, dmg: 26, level: "high", hitstun: 460, knock: 80, stop: 130, range: 180, launch: 420 }],
+    meter: 0, cost: 100,
+  },
+};
+const MOVE_NAMES = ["approach", "retreat", "block", "jab", "combo", "low", "launcher", "throw", "provoke", "special"];
+
+const MOVE_HINT = {
+  approach: "walk forward", retreat: "walk back", block: "guard (beats high, weak to low)",
+  jab: "fast single poke", combo: "3-hit chain, stops if blocked",
+  low: "low kick, beats standing guard", launcher: "uppercut that starts a juggle",
+  throw: "unblockable, very close range", provoke: "rattle them: +30% damage taken, they may whiff",
+  special: "costs a full meter",
+};
+
+/* ============================================================
+   POSES
+   c = crouch px Ãƒâ€šÃ‚Â· l = torso lean Ãƒâ€šÃ‚Â· h = head tilt
+   fx/fy front foot, bx/by back foot (IK targets)
+   au/af front arm angles Ãƒâ€šÃ‚Â· bu/bf back arm angles
+   ============================================================ */
+const BASE = { c: 8, l: 0.10, h: 0.02, fx: 30, fy: 0, bx: -26, by: 0, au: 0.85, af: 2.30, bu: 0.55, bf: 2.45, tilt: 0 };
+
+const POSES = {
+  idle: { },
+  walkF: { c: 10, fx: 44, fy: 0, bx: -38, by: 0, l: 0.16 },
+  walkB: { c: 10, fx: 16, fy: 0, bx: -10, by: 0, l: 0.02 },
+  block: { c: 16, l: -0.06, au: 1.05, af: 2.52, bu: 0.92, bf: 2.62, fx: 24, bx: -22 },
+  jabW: { c: 9, l: 0.04, au: 0.50, af: 1.70, fx: 26, bx: -28 },
+  jabS: { c: 5, l: 0.22, au: 1.52, af: 1.58, bu: 0.30, bf: 2.30, fx: 40, bx: -30 },
+  comboW: { c: 10, l: 0.06, au: 0.60, af: 1.80, bu: 0.45, bf: 2.30 },
+  combo1: { c: 6, l: 0.20, au: 1.50, af: 1.55, bu: 0.35, bf: 2.35, fx: 38, bx: -30 },
+  combo2: { c: 4, l: 0.28, au: 0.55, af: 2.40, bu: 1.50, bf: 1.55, fx: 42, bx: -32 },
+  combo3: { c: 14, l: 0.36, au: 1.30, af: 1.85, bu: 0.20, bf: 2.10, fx: 48, bx: -34 },
+  lowW: { c: 14, l: 0.02, fx: 28, fy: 0, bx: -26 },
+  lowS: { c: 30, l: -0.18, fx: 86, fy: -34, bx: -22, au: 0.70, af: 2.10 },
+  launchW: { c: 26, l: 0.12, au: 1.10, af: 1.95, fx: 30, bx: -28 },
+  launchS: { c: -8, l: -0.22, au: -0.95, af: 3.05, bu: 0.30, bf: 2.40, fx: 36, bx: -34 },
+  throwW: { c: 10, l: 0.05, au: 0.55, af: 1.70, bu: 0.45, bf: 1.80 },
+  throwS: { c: 6, l: 0.34, au: 1.55, af: 1.50, bu: 1.45, bf: 1.55, fx: 40, bx: -32 },
+  provW: { c: 10, l: -0.04, au: 1.20, af: 2.40, bu: 0.60, bf: 2.30 },
+  provS: { c: 8, l: 0.24, au: 1.45, af: 1.20, bu: 0.40, bf: 2.30, fx: 38, bx: -30 },
+  specialW: { c: 22, l: -0.14, au: 0.15, af: 0.45, bu: 0.05, bf: 0.55, fx: 26, bx: -30 },
+  specialS: { c: -10, l: 0.32, au: 1.62, af: 1.45, bu: 1.50, bf: 1.55, fx: 50, bx: -36 },
+  hit: { c: 18, l: -0.36, h: -0.28, au: 0.15, af: 0.60, bu: -0.15, bf: 0.55, fx: 20, bx: -36 },
+  air: { c: -18, l: -0.10, fx: 44, fy: -54, bx: -18, by: -30, au: -0.50, af: 1.10, bu: -0.30, bf: 1.30 },
+  down: { c: 84, l: -0.10, fx: 40, fy: 0, bx: -20, by: 0, au: 1.6, af: 2.6, bu: 1.2, bf: 2.4, tilt: -1.35 },
+};
+
+function lerpPose(a, b, t){
+  const out = {};
+  for (const k in BASE) out[k] = a[k] + (b[k] - a[k]) * t;
+  return out;
+}
+function mixPose(a, b, t){ return lerpPose(a, b, t); }
+function easeOut(t){ return 1 - Math.pow(1 - t, 3); }
+function easeIn(t){ return t * t; }
+
+/* ============================================================
+   FIGHTER
+   ============================================================ */
+let uid = 0;
+class Fighter {
+  constructor(slot, config){
+    this.def = config;
+    this.id = ++uid;
+    this.slot = slot;
+    this.name = config.label;
+    this.color = slot === 0 ? C.blue : C.amber;
+    this.costume = COSTUMES[slot];
+    this.latency = config.latency || 600;
+
+    this.x = slot === 0 ? ACX - 130 : ACX + 130;
+    this.facing = slot === 0 ? 1 : -1;
+
+    this.hp = 220; this.maxHp = 220; this.hpShown = 220;
+    this.meter = 0;
+
+    this.state = "idle";
+    this.action = null;
+    this.stun = 0;
+    this.hitstun = 0;
+    this.blockstun = 0;
+    this.air = 0;          // vertical velocity while airborne
+    this.airborne = false;
+    this.down = 0;
+    this.ko = false;
+
+    this.pending = false;
+    this.queued = null;
+    this.thought = "";
+    this.thoughtAge = 99999;
+    this.thoughtKind = "think";
+    this.bob = Math.random() * 6;
+    this.flash = 0;
+    this.rattled = 0;
+    this.comboHits = 0;
+
+    this.log = [];
+    this.stats = {
+      decisions:0, latencySum:0, promptTok:0, completionTok:0, totalTok:0,
+      hits:0, whiffs:0, blocks:0, dmg:0, provokes:0, hallucinations:0, fallbacks:0, bestCombo:0,
+    };
+    this.seen = { model: config.model || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â", provider: config.provider || "demo", temperature: config.temperature ?? "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â" };
+  }
+
+  get busy(){ return this.action !== null || this.stun > 0 || this.ko || this.down > 0; }
+  get blocking(){ return this.state === "block"; }
+  hpFraction(){ return Math.max(0, this.hp) / this.maxHp; }
+  avgLatency(){ return this.stats.decisions ? Math.round(this.stats.latencySum / this.stats.decisions) : 0; }
+  accuracy(){ const a = this.stats.hits + this.stats.whiffs; return a ? Math.round(100 * this.stats.hits / a) : 0; }
+  tps(){ return this.stats.decisions ? Math.round(this.stats.completionTok / Math.max(0.001, this.stats.latencySum / 1000)) : 0; }
+
+  say(text, kind, fromModel){
+    this.log.push({ text, kind: kind || "think", fromModel: !!fromModel });
+    if (this.log.length > 40) this.log.shift();
+  }
+}
+
+/* ============================================================
+   BRAINS
+   ============================================================ */
+const DEMO_WEIGHTS = [
+  { approach:26, retreat:5, block:11, jab:14, combo:14, low:8, launcher:7, throw:5, provoke:5, special:5 },
+  { approach:22, retreat:7, block:13, jab:11, combo:11, low:11, launcher:9, throw:6, provoke:6, special:4 },
+];
+const DEMO_LINES = {
+  approach:["close the distance", "step in behind the guard", "take the centre"],
+  retreat:["reset the spacing", "back off the corner", "let them overreach"],
+  block:["read, then answer", "hold the guard", "wait for the recovery"],
+  jab:["jab, keep it safe", "poke and step", "test the guard"],
+  combo:["chain it ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â three clean", "open with the jab, finish heavy", "the full string"],
+  low:["go under the guard", "low kick, take the legs", "they block high too often"],
+  launcher:["launch and juggle", "pop them up, follow", "uppercut, then everything"],
+  throw:["they're blocking, throw them", "grab and slam", "break the turtle"],
+  provoke:["rattle them, then strike", "make them doubt", "say something cruel"],
+  special:["cash the meter", "empty the tank", "finish it now"],
+};
+const PROVOCATIONS = [
+  "you are reading ghosts", "your guard is a rumour", "I know your next move",
+  "you flinch before the windup", "the distance is a lie", "you are slower than you think",
+  "that combo never lands", "I have seen this pattern before",
+];
+
+class DemoBrain {
+  constructor(f){ this.f = f; }
+  decide(me, foe){
+    const ms = 280 + Math.random() * 420;
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const dist = Math.abs(me.x - foe.x);
+        const w = Object.assign({}, DEMO_WEIGHTS[me.slot]);
+        if (dist > 300){ w.approach *= 2.8; w.retreat *= 0.3; w.block *= 0.2; w.jab *= 0.3; w.combo *= 0.2; w.throw = 0; }
+        else if (dist < 130){
+          w.combo *= 1.5; w.throw *= 1.6; w.low *= 1.3; w.approach *= 0.4; w.jab *= 1.2;
+          if (foe.blocking) w.throw *= 2.2;
+        }
+        if (me.hpFraction() < 0.3){ w.special *= 2; w.combo *= 1.3; }
+        if (me.meter < 100) w.special = 0;
+        if (foe.rattled > 0){ w.provoke *= 0.25; w.combo *= 1.6; w.launcher *= 1.4; }
+        if (me.rattled > 0){ w.block *= 1.4; w.throw *= 0.5; }
+
+        const total = Object.values(w).reduce((a, b) => a + b, 0) || 1;
+        let roll = Math.random() * total, pick = "approach";
+        for (const k in w){ roll -= w[k]; if (roll <= 0){ pick = k; break; } }
+
+        const lines = DEMO_LINES[pick] || ["..."];
+        resolve({
+          action: pick,
+          thought: lines[Math.floor(Math.random() * lines.length)],
+          provocation: pick === "provoke" ? PROVOCATIONS[Math.floor(Math.random() * PROVOCATIONS.length)] : undefined,
+          ms, source: "demo",
+        });
+      }, ms);
+    });
+  }
+}
+
+class ApiBrain {
+  constructor(f){ this.f = f; }
+  async decide(me, foe){
+    const t0 = performance.now();
+    try {
+      const res = await fetch(API_BASE + "/decide", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: me.def.apiId,
+          fighter: { name: me.name, hp: Math.round(me.hp), meter: Math.round(me.meter), rattled: me.rattled > 0, airborne: me.airborne },
+          opponent: {
+            name: foe.name, hp: Math.round(foe.hp), meter: Math.round(foe.meter),
+            rattled: foe.rattled > 0, blocking: foe.blocking, airborne: foe.airborne,
+            comboHits: foe.comboHits,
+          },
+          distance: Math.round(Math.abs(me.x - foe.x)),
+          moves: MOVE_NAMES, hints: MOVE_HINT,
+        }),
+      });
+      if (!res.ok) throw new Error("proxy " + res.status);
+      const d = await res.json();
+      return {
+        action: d.action, thought: d.thought || "", provocation: d.provocation,
+        ms: typeof d.latencyMs === "number" ? d.latencyMs : Math.round(performance.now() - t0),
+        usage: d.usage || null, model: d.model, provider: d.provider,
+        temperature: d.temperature, source: d.source,
+      };
+    } catch {
+      const dist = Math.abs(me.x - foe.x);
+      const fb = dist > 300 ? "approach" : (Math.random() < 0.5 ? "combo" : "block");
+      return { action: fb, thought: "no answer ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â fighting on instinct", ms: Math.round(performance.now() - t0), usage: null, source: "offline" };
+    }
+  }
+}
+
+const API_BASE = "http://127.0.0.1:8787";
+
+/* ============================================================
+   GAME
+   ============================================================ */
+const game = {
+  running:false, over:false, fighters:[], brains:[], particles:[], floats:[],
+  shake:0, slowmo:1, hitStop:0, flashFrame:0,
+  timeLeft: TIME_LIMIT, series:[0,0], result:null, resultShown:false,
+  combo: null, zoomPunch: 0,
+};
+
+function startMatch(configs){
+  game.fighters = [new Fighter(0, configs[0]), new Fighter(1, configs[1])];
+  game.brains = game.fighters.map(f => f.def.kind === "demo" ? new DemoBrain(f) : new ApiBrain(f));
+  game.particles.length = 0; game.floats.length = 0;
+  game.over = false; game.running = true;
+  game.timeLeft = TIME_LIMIT; game.hitStop = 0; game.slowmo = 1;
+  game.shake = 0; game.result = null; game.resultShown = false;
+  game.combo = null; game.zoomPunch = 0;
+  hideResult();
+  game.fighters.forEach(f => f.say("enters the arena.", "system", false));
+}
+
+/* ============================================================
+   ACTION -> ANIMATION
+   ============================================================ */
+function startAction(f, name){
+  const mv = MOVES[name];
+  if (!mv){
+    if (name === "approach"){ f.state = "walk"; f.action = { name, t: 0, dur: 380 }; return; }
+    if (name === "retreat"){ f.state = "walk"; f.action = { name, t: 0, dur: 380 }; return; }
+    if (name === "block"){ f.state = "block"; f.action = { name, t: 0, dur: 460 }; return; }
+    if (name === "provoke"){ f.state = "attack"; f.action = { name, t: 0, dur: 700, provoked:false }; return; }
+    return;
+  }
+  if (mv.cost){
+    if (f.meter < mv.cost) return startAction(f, "combo");
+    f.meter -= mv.cost;
+  }
+  f.state = "attack";
+  f.action = { name, t: 0, hitIndex: 0, abort: false };
+  if (mv.meter) f.meter = Math.min(100, f.meter + 0);
+}
+
+/* ---------- intent ---------- */
+function chooseIntent(f, brain){
+  f.pending = true;
+  const foe = game.fighters.find(x => x !== f);
+  if (!foe){ f.pending = false; return; }
+
+  Promise.resolve(brain.decide(f, foe)).then(def => {
+    f.pending = false;
+    if (game.over || f.ko || !def) return;
+    if (def.usage){
+      f.stats.promptTok += def.usage.prompt || 0;
+      f.stats.completionTok += def.usage.completion || 0;
+      f.stats.totalTok += def.usage.total || 0;
+    }
+    if (def.source === "offline") f.stats.fallbacks++;
+    if (def.model && def.model !== "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â") f.seen.model = def.model;
+    if (def.temperature !== undefined && def.temperature !== null) f.seen.temperature = def.temperature;
+    f.stats.decisions++;
+    f.stats.latencySum += typeof def.ms === "number" ? def.ms : f.latency;
+    if (!f.queued) f.queued = { action: def.action, thought: def.thought, provocation: def.provocation };
+    if (!f.busy) flushQueued(f);
+  }).catch(() => { f.pending = false; });
+}
+function maybePrefetch(f){
+  if (f.pending || f.queued || f.ko || game.over) return;
+  const b = game.brains[game.fighters.indexOf(f)];
+  if (b) chooseIntent(f, b);
+}
+function flushQueued(f){
+  if (!f.queued || f.busy || game.over) return;
+  const q = f.queued; f.queued = null;
+  if (q.thought) f.say(q.thought, "think", true);
+  f.thought = (q.action === "provoke" && q.provocation) ? q.provocation : q.thought;
+  f.thoughtKind = q.action === "provoke" ? "provoke" : "think";
+  f.thoughtAge = 0;
+  startAction(f, q.action);
+  maybePrefetch(f);
+}
+
+/* ============================================================
+   COMBAT
+   ============================================================ */
+function comboScale(n){
+  const table = [1, 0.9, 0.78, 0.66, 0.55, 0.46];
+  return table[Math.min(n, table.length - 1)];
+}
+
+function resolveHit(att, def, hit, move){
+  const dist = Math.abs(att.x - def.x);
+  const inFront = (def.x - att.x) * att.facing > 0;
+  if (dist > hit.range || !inFront){ return "whiff"; }
+
+  // rattled fighters hallucinate a hitbox that was never there
+  if (att.rattled > 0 && Math.random() < 0.35){
+    att.stats.whiffs++; att.stats.hallucinations++;
+    att.say("swings at a hitbox that is not there.", "miss", false);
+    addFloat(att.x, GROUND - 250, "MISS", "#9aa0b5");
+    spawnSparks(att.x + att.facing * 60, GROUND - 180, "#8d93a8", 6);
+    recordEvent(att.name + " swings at nothing.");
+    return "whiff";
+  }
+
+  const blocked = def.blocking && hit.level !== "throw";
+  let dmg = hit.dmg;
+
+  if (blocked){
+    def.stats.blocks++;
+    dmg = Math.max(1, Math.round(dmg * (hit.level === "low" ? 0.45 : 0.12)));
+    def.stun = Math.max(def.stun, 140);
+    def.blockstun = 140;
+    addFloat(def.x, GROUND - 240, "BLOCK", "#9aa0b5");
+    spawnSparks((att.x + def.x) / 2, GROUND - 175, "#cfd6ea", 10);
+  } else {
+    const n = game.combo ? game.combo.count : 0;
+    dmg = Math.round(dmg * comboScale(n));
+    if (def.rattled > 0) dmg = Math.round(dmg * 1.3);
+    att.stats.hits++; att.stats.dmg += dmg;
+    def.hitstun = hit.hitstun;
+    def.stun = Math.max(def.stun, hit.hitstun);
+    def.action = null; def.state = "hit";
+    def.flash = 1;
+    spawnSparks((att.x + def.x) / 2, GROUND - 185, att.color, 20);
+    addFloat(def.x, GROUND - 240, "-" + dmg, "#14171d");
+    registerHit(att, def, dmg);
+  }
+
+  // the actual damage â€” without this nobody can ever be knocked out
+  def.hp = Math.max(0, def.hp - dmg);
+
+  if (hit.launch && !blocked){
+    def.airborne = true;
+    def.air = -hit.launch;
+    def.stun = Math.max(def.stun, 260);
+  }
+  if (!blocked){
+    def.x += -att.facing * (hit.knock || 0) * 0.6;
+    if (!def.airborne) def.x += -att.facing * 4;
+  } else {
+    def.x += -att.facing * (hit.knock || 0) * 0.2;
+    att.x += att.facing * 3;
+  }
+
+  game.hitStop = hit.stop || 50;
+  game.shake = Math.min(20, 4 + dmg * 0.6);
+  game.zoomPunch = Math.min(0.06, 0.01 + dmg * 0.002);
+
+  if (move.meter) att.meter = Math.min(100, att.meter + move.meter);
+  if (!blocked && def.hp <= 0) knockOut(def, att);
+
+  return blocked ? "block" : "hit";
+}
+
+function registerHit(att, def, dmg){
+  if (!game.combo || game.combo.owner !== att){
+    game.combo = { owner: att, count: 0, dmg: 0, timer: 0 };
+  }
+  game.combo.count++;
+  game.combo.dmg += dmg;
+  game.combo.timer = 900;
+  att.comboHits = game.combo.count;
+  if (game.combo.count > att.stats.bestCombo) att.stats.bestCombo = game.combo.count;
+  if (game.combo.count >= 2) recordEvent(att.name + " chains " + game.combo.count + " hits.");
+}
+
+function applyProvoke(att, def){
+  att.stats.provokes++;
+  def.rattled = 2600;
+  def.say("rattled ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the guard is a story now.", "rattle", false);
+  addFloat(def.x, GROUND - 250, "RATTLED", C.gold);
+  spawnSparks(def.x, GROUND - 190, C.gold, 12);
+  recordEvent(att.name + " rattles " + def.name + ".");
+  game.hitStop = 40;
+}
+
+function knockOut(loser, winner){
+  loser.ko = true; loser.action = null; loser.queued = null;
+  loser.stun = 1e9; loser.state = "down";
+  game.slowmo = 0.22; game.over = true; game.shake = 22;
+  if (winner) game.series[winner.slot]++;
+  game.result = { winner: winner || game.fighters[0], loser, reason: "Knock Out" };
+  loser.say("is knocked out.", "system", false);
+  recordEvent("K.O. ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â " + loser.name + " is out.");
+  setTimeout(() => { if (game.over) showResult(); }, 2000);
+}
+function endOnTime(){
+  const [a, b] = game.fighters;
+  const winner = a.hpFraction() >= b.hpFraction() ? a : b;
+  game.over = true; game.timeLeft = 0; game.series[winner.slot]++;
+  game.result = { winner, loser: winner === a ? b : a, reason: "Time Up" };
+  recordEvent("Time up.");
+  setTimeout(() => { if (game.over) showResult(); }, 900);
+}
+
+function spawnSparks(x, y, color, n){
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 5.5;
+    game.particles.push({ x, y, vx: Math.cos(a) * s * 2.6, vy: Math.sin(a) * s * 2.6 - 2,
+      life: 1, decay: 0.03 + Math.random() * 0.035, color, size: 1.2 + Math.random() * 2.6 });
+  }
+}
+function addFloat(x, y, text, color){
+  game.floats.push({ x, y, text, color, life: 1, vy: -1.4 });
+}
+
+/* ============================================================
+   UPDATE
+   ============================================================ */
+function update(dt){
+  if (!game.running) return;
+  if (game.hitStop > 0){
+    game.hitStop -= dt;
+    game.flashFrame = Math.max(0, game.flashFrame - dt);
+    updateParticles(dt * 0.2);
+    return;
+  }
+  const step = dt * game.slowmo;
+
+  if (!game.over){
+    game.timeLeft -= step;
+    if (game.timeLeft <= 0) endOnTime();
+  }
+  if (game.combo){
+    game.combo.timer -= step;
+    if (game.combo.timer <= 0){ game.combo.owner.comboHits = 0; game.combo = null; }
+  }
+
+  for (const f of game.fighters){
+    if (f.flash > 0) f.flash = Math.max(0, f.flash - dt / 150);
+    if (f.rattled > 0) f.rattled = Math.max(0, f.rattled - step);
+    f.thoughtAge += dt;
+    f.hpShown += (f.hp - f.hpShown) * Math.min(1, dt / 110);
+    f.bob += 0.05;
+    updateFighter(f, step);
+  }
+
+  separate(game.fighters[0], game.fighters[1]);
+  updateParticles(dt);
+  updateFloats(dt);
+  game.shake *= Math.pow(0.86, dt / 16);
+  game.zoomPunch *= Math.pow(0.85, dt / 16);
+}
+
+function updateFighter(f, step){
+  if (f.ko){ f.state = "down"; return; }
+
+  // airborne physics
+  if (f.airborne){
+    f.air += 2100 * step / 1000;
+    f.y = (f.y || 0) + f.air * step / 1000;
+    if (f.y >= 0){ f.y = 0; f.airborne = false; f.air = 0; f.down = 460; f.state = "down"; f.stun = 0; }
+    return;
+  }
+  if (f.down > 0){
+    f.down -= step;
+    if (f.down <= 0){ f.down = 0; f.state = "idle"; f.hitstun = 0; }
+    return;
+  }
+  if (f.stun > 0){
+    f.stun -= step;
+    if (f.stun <= 0){ f.stun = 0; if (f.state !== "attack") f.state = "idle"; }
+    return;
+  }
+
+  if (f.action){
+    const a = f.action;
+    a.t += step;
+
+    if (a.name === "approach" || a.name === "retreat"){
+      const dir = a.name === "approach" ? 1 : -1;
+      f.x += f.facing * dir * 480 * step / 1000;
+      if (a.t >= a.dur){ f.action = null; f.state = "idle"; }
+      return;
+    }
+    if (a.name === "block"){
+      if (a.t >= a.dur){ f.action = null; f.state = "idle"; }
+      return;
+    }
+    if (a.name === "provoke"){
+      if (!a.provoked){ a.provoked = true; applyProvoke(f, game.fighters.find(x => x !== f)); }
+      if (a.t >= a.dur){ f.action = null; f.state = "idle"; }
+      return;
+    }
+
+    const mv = MOVES[a.name];
+    if (mv){
+      // resolve hit events in order
+      while (a.hitIndex < mv.hits.length && a.t >= mv.hits[a.hitIndex].at){
+        const hit = mv.hits[a.hitIndex];
+        const foe = game.fighters.find(x => x !== f);
+        const res = resolveHit(f, foe, hit, mv);
+        a.hitIndex++;
+        // a chained string stops the moment it fails to connect
+        if (mv.string && res !== "hit"){ a.abort = true; a.t = Math.max(a.t, mv.startup + mv.active); break; }
+      }
+      const total = mv.startup + mv.active + mv.recovery;
+      if (a.t >= total){ f.action = null; f.state = "idle"; }
+    }
+    return;
+  }
+
+  if (f.queued){ flushQueued(f); return; }
+  maybePrefetch(f);
+}
+
+function separate(a, b){
+  const minGap = 100;
+  const d = b.x - a.x;
+  if (Math.abs(d) < minGap){
+    const push = (minGap - Math.abs(d)) / 2 * Math.sign(d || 1);
+    a.x -= push; b.x += push;
+  }
+  for (const f of game.fighters) f.x = Math.max(AX0 + 120, Math.min(AX1 - 120, f.x));
+  a.facing = a.x <= b.x ? 1 : -1;
+  b.facing = b.x <= a.x ? 1 : -1;
+}
+
+function updateParticles(dt){
+  for (let i = game.particles.length - 1; i >= 0; i--){
+    const p = game.particles[i];
+    p.x += p.vx * dt / 16; p.y += p.vy * dt / 16;
+    p.vy += 0.34 * dt / 16; p.vx *= 0.98;
+    p.life -= p.decay * dt / 16;
+    if (p.life <= 0) game.particles.splice(i, 1);
+  }
+}
+function updateFloats(dt){
+  for (let i = game.floats.length - 1; i >= 0; i--){
+    const f = game.floats[i];
+    f.y += f.vy * dt / 16; f.vy *= 0.96;
+    f.life -= 0.016 * dt / 16;
+    if (f.life <= 0) game.floats.splice(i, 1);
+  }
+}
+
+/* ============================================================
+   SKELETON
+   ============================================================ */
+const THIGH = 58, SHIN = 56, TORSO = 74, NECK = 9, HEAD_R = 17;
+const UPPER_ARM = 42, FORE_ARM = 38;
+
+function poseFor(f){
+  const b = BASE;
+  if (f.ko || f.down > 0) return merge(POSES.down);
+  if (f.airborne) return merge(POSES.air);
+  if (f.stun > 0 && f.state === "hit") return merge(POSES.hit);
+  if (f.state === "block") return merge(POSES.block);
+
+  if (f.action){
+    const a = f.action;
+    if (a.name === "approach") return blend(b, merge(POSES.walkF), 0.9);
+    if (a.name === "retreat") return blend(b, merge(POSES.walkB), 0.9);
+    if (a.name === "provoke"){
+      const mv = { startup: 200, active: 240, recovery: 260 };
+      return three(b, merge(POSES.provW), merge(POSES.provS), a.t, mv);
+    }
+    const mv = MOVES[a.name];
+    if (mv){
+      if (a.name === "combo"){
+        // pick the sub-pose from which hit window we are in
+        const t = a.t;
+        if (t < 90) return blend(b, merge(POSES.comboW), t / 90);
+        if (t < 300) return blend(merge(POSES.comboW), merge(POSES.combo1), Math.min(1, (t - 90) / 60));
+        if (t < 560) return blend(merge(POSES.combo1), merge(POSES.combo2), Math.min(1, (t - 300) / 60));
+        if (t < 620) return blend(merge(POSES.combo2), merge(POSES.combo3), Math.min(1, (t - 560) / 50));
+        return blend(merge(POSES.combo3), b, Math.min(1, (t - 620) / 200));
+      }
+      const Wp = POSES[mv.pose + "W"], Sp = POSES[mv.pose + "S"];
+      return three(b, Wp ? merge(Wp) : merge(b), Sp ? merge(Sp) : merge(b), a.t, mv);
+    }
+  }
+  // idle breathing
+  const id = merge(b);
+  id.c += Math.sin(f.bob) * 1.6;
+  id.au += Math.sin(f.bob * 0.9) * 0.05;
+  id.af += Math.sin(f.bob * 0.9 + 1) * 0.05;
+  return id;
+}
+
+function merge(p){
+  const o = {};
+  for (const k in BASE) o[k] = (p && p[k] !== undefined) ? p[k] : BASE[k];
+  return o;
+}
+function blend(a, b, t){
+  t = Math.max(0, Math.min(1, t));
+  const o = {};
+  for (const k in BASE) o[k] = a[k] + (b[k] - a[k]) * t;
+  return o;
+}
+function three(idle, wind, strike, t, mv){
+  if (t < mv.startup) return blend(idle, wind, easeOut(t / mv.startup));
+  if (t < mv.startup + mv.active) return blend(wind, strike, easeOut((t - mv.startup) / Math.max(1, mv.active)));
+  const r = (t - mv.startup - mv.active) / mv.recovery;
+  const back = mixPose(strike, idle, Math.min(1, r));
+  back.c = strike.c + (idle.c - strike.c) * Math.min(1, r);
+  return back;
+}
+
+/* ---------- drawing primitives ---------- */
+function bone(x1, y1, x2, y2, w1, w2, c1, c2, co){
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  const g = ctx.createLinearGradient(x1 - nx * w1, y1 - ny * w1, x1 + nx * w1, y1 + ny * w1);
+  g.addColorStop(0, c2); g.addColorStop(0.55, c1); g.addColorStop(1, c2);
+  ctx.beginPath();
+  ctx.moveTo(x1 + nx * w1, y1 + ny * w1);
+  ctx.lineTo(x2 + nx * w2, y2 + ny * w2);
+  ctx.lineTo(x2 - nx * w2, y2 - ny * w2);
+  ctx.lineTo(x1 - nx * w1, y1 - ny * w1);
+  ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.arc(x1, y1, w1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x2, y2, w2, 0, Math.PI * 2); ctx.fill();
+}
+function limbIK(px, py, tx, ty, L1, L2, bend){
+  let dx = tx - px, dy = ty - py;
+  let d = Math.hypot(dx, dy);
+  d = Math.min(d, L1 + L2 - 1);
+  d = Math.max(d, Math.abs(L1 - L2) + 1);
+  const base = Math.atan2(dx, dy);
+  const cosA = (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d);
+  const a = Math.acos(Math.max(-1, Math.min(1, cosA)));
+  const a1 = base + bend * a;
+  const kx = px + Math.sin(a1) * L1;
+  const ky = py + Math.cos(a1) * L1;
+  const ux = px + Math.sin(base) * d;
+  const uy = py + Math.cos(base) * d;
+  return { kx, ky, ux, uy, a1 };
+}
+
+/* ---------- character ---------- */
+function drawCharacter(f, pose){
+  const co = f.costume;
+  const flash = f.flash;
+  const c1 = flash > 0.02 ? mix(co.gi, "#ffffff", 0.55 * flash) : co.gi;
+  const c1d = flash > 0.02 ? mix(co.giDk, "#ffffff", 0.4 * flash) : co.giDk;
+  const sk = flash > 0.02 ? mix(co.skin, "#ffffff", 0.5 * flash) : co.skin;
+  const skd = flash > 0.02 ? mix(co.skinDk, "#ffffff", 0.5 * flash) : co.skinDk;
+
+  const crouch = pose.c;
+  const px = 0, py = -(THIGH + SHIN) + crouch + 14;
+
+  // legs (IK to the ground)
+  const legF = limbIK(px, py, pose.fx, -pose.fy, THIGH, SHIN, -1);
+  const legB = limbIK(px, py, pose.bx, -pose.by, THIGH, SHIN, -1);
+
+  // torso up
+  const tx = Math.sin(pose.l) * TORSO;
+  const ty = -Math.cos(pose.l) * TORSO;
+  const chestX = px + tx, chestY = py + ty;
+  const headX = chestX + Math.sin(pose.l + pose.h) * (NECK + HEAD_R);
+  const headY = chestY - Math.cos(pose.l + pose.h) * (NECK + HEAD_R);
+
+  // shoulder points
+  const sxF = chestX + Math.sin(pose.l) * 4 + 8;
+  const syF = chestY + 12;
+  const sxB = chestX + Math.sin(pose.l) * 4 - 8;
+  const syB = chestY + 12;
+
+  // --- back leg (gi trousers, shaded)
+  const giB = mix(c1d, "#000000", 0.18);
+  bone(px, py, legB.kx, legB.ky, 16, 11, giB, mix(giB, "#000000", 0.30), co);
+  bone(legB.kx, legB.ky, legB.ux, legB.uy, 10, 7, giB, mix(giB, "#000000", 0.30), co);
+  foot(legB.ux, legB.uy, mix(co.trim, "#000000", 0.35));
+
+  // --- back arm (bare, shaded)
+  const bUp = armEnd(sxB, syB, pose.bu, UPPER_ARM);
+  const bFore = armEnd(bUp.x, bUp.y, pose.bf, FORE_ARM);
+  const skB = mix(skd, "#000000", 0.12);
+  bone(sxB, syB, bUp.x, bUp.y, 11, 8, skB, mix(skB, "#000000", 0.30), co);
+  bone(bUp.x, bUp.y, bFore.x, bFore.y, 7.5, 5.5, skB, mix(skB, "#000000", 0.30), co);
+  fist(bFore.x, bFore.y, 7, mix(co.gi, "#000000", 0.35));
+
+  // --- torso
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(px - 15, py + 4);
+  ctx.lineTo(px + 14, py + 4);
+  ctx.lineTo(chestX + 30, chestY + 6);
+  ctx.lineTo(chestX - 28, chestY + 6);
+  ctx.closePath();
+  const tg = ctx.createLinearGradient(px + 30, 0, px - 28, 0);
+  tg.addColorStop(0, mix(c1d, "#000000", 0.25));
+  tg.addColorStop(0.42, c1);
+  tg.addColorStop(1, mix(c1, "#000000", 0.35));
+  ctx.fillStyle = tg; ctx.fill();
+
+  // gi collar, a shallow V at the chest
+  ctx.beginPath();
+  ctx.moveTo(chestX - 19, chestY + 4);
+  ctx.lineTo(chestX + 21, chestY + 4);
+  ctx.lineTo(chestX + 3, chestY + 26);
+  ctx.closePath();
+  ctx.fillStyle = co.trim; ctx.fill();
+  ctx.strokeStyle = mix(co.trim, "#000000", 0.35);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(chestX - 19, chestY + 4); ctx.lineTo(chestX + 3, chestY + 26);
+  ctx.stroke();
+
+  // belt
+  ctx.fillStyle = co.belt;
+  ctx.beginPath();
+  ctx.moveTo(px - 16, py - 2);
+  ctx.lineTo(px + 15, py - 2);
+  ctx.lineTo(px + 14, py + 12);
+  ctx.lineTo(px - 15, py + 12);
+  ctx.closePath(); ctx.fill();
+
+  // neck
+  ctx.beginPath();
+  ctx.moveTo(chestX - 6, chestY);
+  ctx.lineTo(chestX + 7, chestY);
+  ctx.lineTo(headX + 5, headY + 8);
+  ctx.lineTo(headX - 5, headY + 8);
+  ctx.closePath();
+  ctx.fillStyle = mix(sk, "#000000", 0.18); ctx.fill();
+  ctx.restore();
+
+  // --- head
+  ctx.save();
+  ctx.translate(headX, headY);
+  ctx.rotate(pose.l * 0.5 + pose.h);
+  ctx.beginPath(); ctx.arc(0, 0, HEAD_R, 0, Math.PI * 2);
+  ctx.fillStyle = sk; ctx.fill();
+  // jaw shadow
+  ctx.beginPath(); ctx.arc(0, 4, HEAD_R * 0.92, 0.15, Math.PI - 0.15);
+  ctx.fillStyle = mix(sk, "#000000", 0.14); ctx.fill();
+  // hair
+  ctx.beginPath();
+  ctx.arc(0, -1, HEAD_R * 1.02, Math.PI * 1.02, Math.PI * 2.02);
+  ctx.lineTo(-HEAD_R * 0.9, 2);
+  ctx.closePath();
+  ctx.fillStyle = co.hair; ctx.fill();
+  // brow + eye
+  ctx.fillStyle = "rgba(16,18,24,0.9)";
+  ctx.fillRect(2, -5, 12, 3);
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillRect(10, -4, 3, 1.4);
+  ctx.restore();
+
+  // --- front leg
+  bone(px, py, legF.kx, legF.ky, 17, 12, c1, mix(c1, "#000000", 0.28), co);
+  bone(legF.kx, legF.ky, legF.ux, legF.uy, 11, 7.5, c1, mix(c1, "#000000", 0.28), co);
+  foot(legF.ux, legF.uy, co.trim);
+
+  // --- front arm
+  const fUp = armEnd(sxF, syF, pose.au, UPPER_ARM);
+  const fFore = armEnd(fUp.x, fUp.y, pose.af, FORE_ARM);
+  bone(sxF, syF, fUp.x, fUp.y, 12, 8.5, sk, mix(sk, "#000000", 0.28), co);
+  bone(fUp.x, fUp.y, fFore.x, fFore.y, 8.5, 6, sk, mix(sk, "#000000", 0.28), co);
+  fist(fFore.x, fFore.y, 8.5, co.gi);
+}
+function armEnd(x, y, ang, len){ return { x: x + Math.sin(ang) * len, y: y + Math.cos(ang) * len }; }
+function fist(x, y, r, color){
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.beginPath(); ctx.arc(x - r * 0.25, y - r * 0.3, r * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fill();
+}
+function foot(x, y, color){
+  ctx.beginPath();
+  ctx.ellipse(x + 5, y - 2, 13, 7, 0, 0, Math.PI * 2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+/* ============================================================
+   STAGE
+   ============================================================ */
+function drawStage(){
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+  sky.addColorStop(0, "#141a33");
+  sky.addColorStop(0.45, "#3a2a4e");
+  sky.addColorStop(0.78, "#a85436");
+  sky.addColorStop(1, "#e79a4e");
+  ctx.fillStyle = sky;
+  ctx.fillRect(-500, 0, W + 1000, GROUND + 4);
+
+  // sun
+  const sun = ctx.createRadialGradient(ACX + 120, GROUND - 90, 10, ACX + 120, GROUND - 90, 260);
+  sun.addColorStop(0, "rgba(255,214,140,0.55)");
+  sun.addColorStop(1, "rgba(255,160,80,0)");
+  ctx.fillStyle = sun;
+  ctx.fillRect(-500, 0, W + 1000, GROUND);
+
+  // skyline layers
+  skyline(GROUND - 30, "#241d33", 0.9, 74);
+  skyline(GROUND - 2, "#171326", 0.65, 52);
+
+  // ground
+  const fl = ctx.createLinearGradient(0, GROUND, 0, H);
+  fl.addColorStop(0, "#3a3048");
+  fl.addColorStop(0.35, "#241d2e");
+  fl.addColorStop(1, "#100c16");
+  ctx.fillStyle = fl;
+  ctx.fillRect(-500, GROUND, W + 1000, H - GROUND);
+
+  // floor perspective
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,190,120,0.10)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 7; i++){
+    const y = GROUND + Math.pow(i / 7, 1.7) * (H - GROUND);
+    ctx.beginPath(); ctx.moveTo(-500, y); ctx.lineTo(W + 500, y); ctx.stroke();
+  }
+  for (let i = -14; i <= 14; i++){
+    ctx.beginPath();
+    ctx.moveTo(ACX + i * 70, GROUND);
+    ctx.lineTo(ACX + i * 190, H);
+    ctx.stroke();
+  }
+  // ring boundary line
+  ctx.strokeStyle = "rgba(255,200,140,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-500, GROUND); ctx.lineTo(W + 500, GROUND); ctx.stroke();
+  ctx.restore();
+}
+
+function skyline(baseY, color, scale, step){
+  ctx.save();
+  ctx.fillStyle = color;
+  for (let i = -10; i < 40; i++){
+    const x = i * step * 1.6;
+    const h = (40 + ((i * 37) % 90)) * scale;
+    const w = step * (0.9 + ((i * 13) % 5) / 10);
+    ctx.fillRect(x, baseY - h, w, h);
+  }
+  ctx.restore();
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+function drawHUD(){
+  const [a, b] = game.fighters;
+  drawHealthBar(a, 34, 30, 470, false);
+  drawHealthBar(b, W - 34 - 470, 30, 470, true);
+
+  // timer
+  const secs = Math.max(0, Math.ceil(game.timeLeft / 1000));
+  const txt = Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+  ctx.save();
+  ctx.fillStyle = "rgba(10,12,20,0.82)";
+  ctx.fillRect(ACX - 58, 18, 116, 58);
+  ctx.strokeStyle = "rgba(240,200,140,0.6)"; ctx.lineWidth = 2;
+  ctx.strokeRect(ACX - 58, 18, 116, 58);
+  ctx.textAlign = "center";
+  ctx.font = `700 30px ${SERIF}`;
+  ctx.fillStyle = secs <= 20 ? "#ff6b5c" : "#f6ead2";
+  ctx.fillText(txt, ACX, 58);
+  ctx.restore();
+
+  // round pips
+  for (let i = 0; i < 2; i++){
+    for (let k = 0; k < Math.min(3, game.series[i]); k++){
+      const x = i === 0 ? ACX - 96 - k * 18 : ACX + 96 + k * 18;
+      ctx.beginPath();
+      ctx.arc(x, 47, 5.5, 0, Math.PI * 2);
+      ctx.fillStyle = i === 0 ? C.blue : C.amber;
+      ctx.fill();
+    }
+  }
+
+  // super meters
+  drawMeter(a, AX0 + 24, H - 40, 250, false);
+  drawMeter(b, AX1 - 24 - 250, H - 40, 250, true);
+
+  // combo counter
+  if (game.combo && game.combo.count >= 2){
+    const owner = game.combo.owner;
+    const x = owner.x, y = GROUND - 290;
+    const pop = Math.min(1, game.combo.timer / 900);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = `800 ${28 + 6 * pop}px ${SERIF}`;
+    ctx.fillStyle = C.gold;
+    ctx.shadowColor = "rgba(255,180,60,0.8)"; ctx.shadowBlur = 18;
+    ctx.fillText(game.combo.count + " HIT", x, y);
+    ctx.font = `700 14px ${TEXT}`;
+    ctx.fillStyle = "#fff2d6"; ctx.shadowBlur = 8;
+    ctx.fillText("COMBO", x, y + 20);
+    ctx.restore();
+  }
+}
+
+function drawHealthBar(f, x, y, w, flip){
+  const h = 26;
+  ctx.save();
+  ctx.fillStyle = "rgba(10,12,20,0.8)";
+  ctx.fillRect(x - 4, y - 4, w + 8, h + 8);
+  ctx.strokeStyle = "rgba(240,200,140,0.55)"; ctx.lineWidth = 2;
+  ctx.strokeRect(x - 4, y - 4, w + 8, h + 8);
+
+  const shownW = w * Math.max(0, f.hpShown) / f.maxHp;
+  const realW = w * f.hpFraction();
+
+  ctx.fillStyle = "rgba(255,90,70,0.55)";
+  if (flip) ctx.fillRect(x + w - shownW, y, shownW, h);
+  else      ctx.fillRect(x, y, shownW, h);
+
+  const g = flip
+    ? ctx.createLinearGradient(x + w, y, x, y)
+    : ctx.createLinearGradient(x, y, x + w, y);
+  g.addColorStop(0, f.color);
+  g.addColorStop(1, mix(f.color, "#ffffff", 0.25));
+  ctx.fillStyle = g;
+  if (flip) ctx.fillRect(x + w - realW, y, realW, h);
+  else      ctx.fillRect(x, y, realW, h);
+
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = "#fff";
+  if (flip) ctx.fillRect(x + w - realW, y, realW, h * 0.35);
+  else      ctx.fillRect(x, y, realW, h * 0.35);
+  ctx.globalAlpha = 1;
+
+  ctx.textAlign = flip ? "right" : "left";
+  const tx = flip ? x + w : x;
+  ctx.font = `700 15px ${SERIF}`;
+  ctx.fillStyle = "#f6ead2";
+  ctx.fillText(f.name, tx, y - 12);
+  ctx.restore();
+}
+
+function drawMeter(f, x, y, w, flip){
+  ctx.save();
+  ctx.fillStyle = "rgba(10,12,20,0.7)";
+  ctx.fillRect(x - 3, y - 3, w + 6, 16);
+  ctx.strokeStyle = "rgba(240,200,140,0.35)"; ctx.lineWidth = 1;
+  ctx.strokeRect(x - 3, y - 3, w + 6, 16);
+  const p = f.meter / 100;
+  const g = ctx.createLinearGradient(x, y, x + w, y);
+  g.addColorStop(0, mix(f.color, "#000", 0.25));
+  g.addColorStop(1, f.meter >= 100 ? C.gold : f.color);
+  ctx.fillStyle = g;
+  if (flip) ctx.fillRect(x + w - w * p, y, w * p, 10);
+  else      ctx.fillRect(x, y, w * p, 10);
+  if (f.meter >= 100){
+    ctx.globalAlpha = 0.25 + 0.2 * Math.sin(performance.now() / 160);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x, y, w, 10);
+    ctx.globalAlpha = 1;
+  }
+  ctx.font = `700 9px ${TEXT}`;
+  ctx.fillStyle = f.meter >= 100 ? "#ffe9a8" : "rgba(240,226,200,0.55)";
+  ctx.textAlign = flip ? "right" : "left";
+  ctx.fillText(f.meter >= 100 ? "SUPER READY" : "METER", flip ? x + w : x, y - 7);
+  ctx.restore();
+}
+
+/* ============================================================
+   DISPATCH COLUMNS
+   ============================================================ */
+function drawPanel(f, side){
+  const x0 = side === 0 ? 14 : W - 194;
+  const x1 = x0 + 180;
+  const cx = (x0 + x1) / 2;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(8,10,18,0.72)";
+  ctx.fillRect(x0 - 6, 104, 192, H - 174);
+  ctx.strokeStyle = "rgba(240,200,140,0.22)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x0 - 6, 104, 192, H - 174);
+  ctx.restore();
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.font = `700 13px ${SERIF}`;
+  ctx.fillStyle = f.color;
+  ctx.fillText(f.name, cx, 124);
+  ctx.font = `600 8px ${TEXT}`;
+  ctx.fillStyle = "rgba(230,220,200,0.5)";
+  ctx.fillText((f.seen.provider + " Ãƒâ€šÃ‚Â· " + f.seen.model).toUpperCase().slice(0, 34), cx, 138);
+  ctx.restore();
+
+  ctx.strokeStyle = "rgba(240,200,140,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, 146); ctx.lineTo(x1, 146); ctx.stroke();
+
+  // transcript
+  let y = 456;
+  const topY = 154;
+  const entries = f.log.slice(-18);
+  for (let i = entries.length - 1; i >= 0 && y > topY; i--){
+    const e = entries[i];
+    const italic = e.kind === "think";
+    const lines = wrapText(e.text, 172, 9, italic);
+    const bh = lines.length * 12.5;
+    if (y - bh < topY) break;
+    y -= bh;
+    ctx.save();
+    ctx.font = `${italic ? "italic " : ""}9px ${TEXT}`;
+    ctx.fillStyle = e.kind === "provoke" ? C.gold
+                  : e.kind === "rattle" ? "#e8735f"
+                  : e.kind === "miss" ? "rgba(200,200,210,0.6)"
+                  : e.kind === "system" ? "rgba(220,210,190,0.45)"
+                  : "rgba(240,234,220,0.92)";
+    ctx.textAlign = "left";
+    let ly = y + 10;
+    for (const line of lines){ ctx.fillText(line, x0, ly); ly += 12.5; }
+    ctx.restore();
+    y -= 6;
+  }
+
+  // figures
+  ctx.strokeStyle = "rgba(240,200,140,0.25)";
+  ctx.beginPath(); ctx.moveTo(x0, 466); ctx.lineTo(x1, 466); ctx.stroke();
+
+  const rows = [
+    ["temperature", String(f.seen.temperature)],
+    ["latency", f.stats.decisions ? f.avgLatency() + "ms" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["tokens in", f.stats.decisions ? String(f.stats.promptTok) : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["tokens out", f.stats.decisions ? String(f.stats.completionTok) : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["tok/sec", f.stats.decisions ? String(f.tps()) : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["turns", String(f.stats.decisions)],
+    ["accuracy", f.stats.hits + f.stats.whiffs ? f.accuracy() + "%" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["best combo", f.stats.bestCombo ? f.stats.bestCombo + " hit" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["provokes", String(f.stats.provokes)],
+    ["hallucinations", String(f.stats.hallucinations)],
+  ];
+  rows.forEach(([label, value], i) => {
+    const ry = 482 + i * 16.5;
+    ctx.save();
+    ctx.font = `600 7.5px ${TEXT}`;
+    ctx.fillStyle = "rgba(230,220,200,0.45)";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x0, ry);
+    ctx.font = `600 9.5px ${TEXT}`;
+    ctx.fillStyle = "#f4ecdc";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x1, ry);
+    ctx.restore();
+  });
+
+  if (f.stats.fallbacks > 0){
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.font = `700 7.5px ${TEXT}`;
+    ctx.fillStyle = "#e8735f";
+    ctx.fillText(f.stats.fallbacks + " NO-ANSWERS", cx, H - 24);
+    ctx.restore();
+  }
+}
+
+/* ============================================================
+   EFFECTS
+   ============================================================ */
+function drawParticles(){
+  for (const p of game.particles){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawFloats(){
+  for (const f of game.floats){
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, f.life);
+    ctx.font = `800 22px ${SERIF}`;
+    ctx.textAlign = "center";
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 6;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.restore();
+  }
+}
+let lastEvent = null;
+function recordEvent(text){ lastEvent = { text, t: 0 }; }
+function drawEventLine(){
+  if (!lastEvent) return;
+  lastEvent.t += 16.6;
+  const alpha = Math.max(0, 1 - lastEvent.t / 3200);
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `italic 12px ${TEXT}`;
+  ctx.fillStyle = "rgba(250,240,220,0.85)";
+  ctx.textAlign = "center";
+  ctx.fillText(lastEvent.text, ACX, GROUND + 92);
+  ctx.restore();
+}
+
+/* ============================================================
+   MAIN DRAW
+   ============================================================ */
+function draw(){
+  ctx.save();
+
+  // camera: track the midpoint, tighten on close exchanges
+  const [fa, fb] = game.fighters.length === 2 ? game.fighters : [null, null];
+  let camX = ACX, zoom = 1;
+  if (fa && fb){
+    const mid = (fa.x + fb.x) / 2;
+    const spread = Math.abs(fa.x - fb.x);
+    zoom = 1.10 - 0.08 * Math.min(1, spread / 620) + game.zoomPunch;
+    camX = Math.max(ACX - 130, Math.min(ACX + 130, mid));
+  }
+  const shake = game.shake;
+  ctx.translate(W / 2 + (Math.random() - 0.5) * shake, GROUND + (Math.random() - 0.5) * shake);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camX, -GROUND);
+
+  drawStage();
+
+  if (fa && fb){
+    // reflections
+    for (const f of game.fighters){
+      const pose = poseFor(f);
+      ctx.save();
+      ctx.globalAlpha = 0.11;
+      ctx.translate(f.x, GROUND + (f.y || 0));
+      ctx.scale(f.facing, -0.48);
+      if (pose.tilt) ctx.rotate(pose.tilt);
+      drawCharacter(f, pose);
+      ctx.restore();
+    }
+    // fighters
+    for (const f of game.fighters){
+      const pose = poseFor(f);
+      ctx.save();
+      ctx.translate(f.x, GROUND + (f.y || 0));
+      ctx.scale(f.facing, 1);
+      if (pose.tilt) ctx.rotate(pose.tilt);
+      drawCharacter(f, pose);
+      ctx.restore();
+    }
+    drawParticles();
+    drawFloats();
+
+    // thought bubbles (screen space, unflipped)
+    for (const f of game.fighters){
+      if (!f.ko && f.thought && f.thoughtAge < 2600 && !f.action) drawBubble(f);
+    }
+  }
+  drawEventLine();
+  ctx.restore();
+
+  // HUD and side panels are screen-space
+  if (fa && fb){
+    drawHUD();
+    drawPanel(game.fighters[0], 0);
+    drawPanel(game.fighters[1], 1);
+  }
+
+  // impact flash
+  if (game.flashFrame > 0){
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.22, game.flashFrame / 300);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+}
+
+function drawBubble(f){
+  const isProv = f.thoughtKind === "provoke";
+  ctx.save();
+  const lines = wrapText(f.thought, 150, 11, true);
+  ctx.font = `italic 11px ${TEXT}`;
+  const tw = Math.min(150, Math.max(...lines.map(l => ctx.measureText(l).width)));
+  const w = tw + 18, h = lines.length * 13 + 10;
+  const x = Math.max(10, Math.min(W - 10 - w, f.x - w / 2));
+  const y = GROUND - 300 - h;
+  ctx.globalAlpha = Math.min(1, (2600 - f.thoughtAge) / 500);
+  ctx.fillStyle = "rgba(12,14,22,0.86)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = isProv ? C.gold : f.color;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+  ctx.fillStyle = isProv ? C.gold : "#eef2ff";
+  ctx.textAlign = "center";
+  let ly = y + 15;
+  for (const l of lines){ ctx.fillText(l, x + w / 2, ly); ly += 13; }
+  ctx.beginPath();
+  ctx.moveTo(f.x - 5, y + h); ctx.lineTo(f.x + 5, y + h); ctx.lineTo(f.x, y + h + 7);
+  ctx.closePath(); ctx.fillStyle = "rgba(12,14,22,0.86)"; ctx.fill();
+  ctx.restore();
+}
+
+/* ============================================================
+   UTIL
+   ============================================================ */
+function wrapText(text, maxW, size, italic){
+  ctx.save();
+  ctx.font = `${italic ? "italic " : ""}${size}px ${TEXT}`;
+  const words = String(text).split(/\s+/);
+  const lines = []; let cur = "";
+  for (const w of words){
+    const test = cur ? cur + " " + w : w;
+    if (ctx.measureText(test).width > maxW && cur){ lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  ctx.restore();
+  return lines;
+}
+function mix(a, b, t){
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = s => Math.round((((pa >> s) & 255) * (1 - t)) + (((pb >> s) & 255) * t));
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+let last = performance.now(), acc = 0;
+const STEP = 1000 / 60;
+function loop(now){
+  const dt = Math.min(now - last, 250);
+  last = now;
+  acc += dt;
+  let guard = 0;
+  while (acc >= STEP && guard++ < 8){ update(STEP); acc -= STEP; }
+  if (!game.over && game.slowmo < 1 && game.running) game.slowmo = Math.min(1, game.slowmo + 0.008);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ============================================================
+   SETUP UI
+   ============================================================ */
+const PROVIDERS = [
+  { id:"deepseek", label:"DeepSeek", model:"deepseek-chat" },
+  { id:"openai", label:"OpenAI", model:"gpt-4o-mini" },
+  { id:"anthropic", label:"Anthropic", model:"claude-3-5-haiku-latest" },
+  { id:"google", label:"Google", model:"gemini-2.0-flash" },
+  { id:"custom", label:"Custom (OpenAI-compatible)", model:"" },
+];
+
+const setupEl = document.getElementById("setup");
+const statusEl = document.getElementById("status");
+const resultEl = document.getElementById("result");
+let remoteModels = [], proxyOnline = false;
+
+function setStatus(msg, kind){ statusEl.textContent = msg || ""; statusEl.className = kind || ""; }
+
+async function loadModels(){
+  try {
+    const res = await fetch(API_BASE + "/models", { cache: "no-store" });
+    if (!res.ok) throw new Error("bad status");
+    const data = await res.json();
+    remoteModels = data.models || []; proxyOnline = true;
+  } catch { remoteModels = []; proxyOnline = false; }
+}
+
+function buildSlot(slot){
+  const card = document.querySelector(`.card[data-slot="${slot}"]`);
+  const source = card.querySelector(".source");
+  const providerSel = card.querySelector(".provider");
+  const newFields = card.querySelector(".newfields");
+  const note = card.querySelector(".src-note");
+
+  providerSel.innerHTML = PROVIDERS.map(p => `<option value="${p.id}">${p.label}</option>`).join("");
+  providerSel.addEventListener("change", () => {
+    const p = PROVIDERS.find(x => x.id === providerSel.value);
+    card.querySelector(".model").placeholder = p && p.model ? "e.g. " + p.model : "model name";
+    if (p && p.model) card.querySelector(".model").value = p.model;
+  });
+  providerSel.dispatchEvent(new Event("change"));
+
+  const opts = [`<option value="">ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â choose a model ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</option>`];
+  if (remoteModels.length){
+    opts.push(`<optgroup label="Ready to fight">`);
+    for (const m of remoteModels) opts.push(`<option value="${m.id}">${m.label}${m.hasKey ? "" : " (no key)"}</option>`);
+    opts.push(`</optgroup>`);
+  }
+  opts.push(`<option value="new">+ Add another APIÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</option>`);
+  opts.push(`<option value="demo">Demonstration engine (no keys)</option>`);
+  source.innerHTML = opts.join("");
+
+  if (remoteModels.length){
+    source.value = remoteModels[slot % remoteModels.length].id;
+    note.textContent = `${remoteModels.length} model${remoteModels.length > 1 ? "s" : ""} ready from your proxy.`;
+  } else {
+    source.value = "demo";
+    note.textContent = proxyOnline
+      ? "No models saved yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â add one above, or watch the demonstration."
+      : "Proxy not running ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the demonstration engine will fight instead.";
+  }
+
+  source.addEventListener("change", () => newFields.classList.toggle("on", source.value === "new"));
+  newFields.classList.toggle("on", source.value === "new");
+}
+
+async function resolveSlot(slot){
+  const card = document.querySelector(`.card[data-slot="${slot}"]`);
+  const source = card.querySelector(".source").value;
+  if (source === "demo"){
+    return { kind:"demo", label: slot === 0 ? "BLUE ENGINE" : "AMBER ENGINE", provider:"demo", model:"local engine", temperature:0 };
+  }
+  if (source === "new"){
+    const provider = card.querySelector(".provider").value;
+    const model = card.querySelector(".model").value.trim();
+    const key = card.querySelector(".key").value.trim();
+    const temperature = Number(card.querySelector(".temp").value);
+    if (!model) throw new Error("Combatant " + (slot + 1) + ": a model name is required.");
+    if (!key && provider !== "custom") throw new Error("Combatant " + (slot + 1) + ": an API key is required.");
+    const res = await fetch(API_BASE + "/configure", {
+      method:"POST", headers:{ "content-type":"application/json" },
+      body: JSON.stringify({ provider, apiKey:key, model, temperature }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "could not configure model");
+    return { kind:"api", apiId:data.model.id, label:data.model.label, provider:data.model.provider, model:data.model.model, temperature:data.model.temperature };
+  }
+  const m = remoteModels.find(x => x.id === source);
+  if (!m) throw new Error("Combatant " + (slot + 1) + ": choose a model.");
+  return { kind:"api", apiId:m.id, label:m.label, provider:m.provider, model:m.model, temperature:m.temperature };
+}
+
+async function begin(){
+  setStatus("");
+  try {
+    if (!proxyOnline) await loadModels();
+    const cfgA = await resolveSlot(0);
+    const cfgB = await resolveSlot(1);
+    setupEl.classList.add("hidden");
+    startMatch([cfgA, cfgB]);
+  } catch (err){ setStatus(err.message, "err"); }
+}
+
+/* ============================================================
+   RESULT SHEET
+   ============================================================ */
+function hideResult(){ resultEl.classList.remove("show"); }
+function showResult(){
+  if (game.resultShown || !game.result) return;
+  game.resultShown = true;
+  const { winner, reason } = game.result;
+  const [a, b] = game.fighters;
+
+  document.getElementById("res-title").textContent = reason;
+  document.getElementById("res-reason").textContent = winner.name + " takes the contest";
+  document.getElementById("res-name-a").textContent = a.name;
+  document.getElementById("res-name-b").textContent = b.name;
+
+  const rows = [
+    ["result", a === winner ? "WINNER" : "defeated", b === winner ? "WINNER" : "defeated"],
+    ["vitality", Math.round(Math.max(0, a.hp)) + " / 220", Math.round(Math.max(0, b.hp)) + " / 220"],
+    ["provider", String(a.seen.provider), String(b.seen.provider)],
+    ["model", String(a.seen.model), String(b.seen.model)],
+    ["temperature", String(a.seen.temperature), String(b.seen.temperature)],
+    ["latency", a.stats.decisions ? a.avgLatency() + " ms" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â", b.stats.decisions ? b.avgLatency() + " ms" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["tokens in", String(a.stats.promptTok), String(b.stats.promptTok)],
+    ["tokens out", String(a.stats.completionTok), String(b.stats.completionTok)],
+    ["tokens / sec", String(a.tps()), String(b.tps())],
+    ["turns", String(a.stats.decisions), String(b.stats.decisions)],
+    ["accuracy", a.stats.hits + a.stats.whiffs ? a.accuracy() + "%" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â", b.stats.hits + b.stats.whiffs ? b.accuracy() + "%" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["best combo", a.stats.bestCombo ? a.stats.bestCombo + " hits" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â", b.stats.bestCombo ? b.stats.bestCombo + " hits" : "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"],
+    ["damage dealt", String(a.stats.dmg), String(b.stats.dmg)],
+    ["provokes", String(a.stats.provokes), String(b.stats.provokes)],
+    ["hallucinations", String(a.stats.hallucinations), String(b.stats.hallucinations)],
+  ];
+  document.getElementById("res-body").innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+  resultEl.classList.add("show");
+}
+
+document.getElementById("begin").addEventListener("click", begin);
+document.getElementById("rematch").addEventListener("click", () => {
+  hideResult();
+  startMatch(game.fighters.map(f => f.def));
+});
+document.getElementById("newcontest").addEventListener("click", () => {
+  hideResult(); game.running = false;
+  setupEl.classList.remove("hidden");
+  loadModels().then(() => { buildSlot(0); buildSlot(1); });
+});
+window.addEventListener("keydown", e => {
+  if (e.key !== "r" && e.key !== "R") return;
+  hideResult(); game.running = false;
+  setupEl.classList.remove("hidden");
+  loadModels().then(() => { buildSlot(0); buildSlot(1); });
+});
+
+(async function boot(){
+  await loadModels();
+  buildSlot(0);
+  buildSlot(1);
+  setStatus(proxyOnline ? "Proxy connected." : "Proxy offline ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â demonstration engine only.", proxyOnline ? "ok" : "");
+  requestAnimationFrame(loop);
+})();
+
+window.ARENA = { game, startMatch, MOVES };
+</script>
+</body>
+</html>
+
+
+
